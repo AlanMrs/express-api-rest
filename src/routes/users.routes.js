@@ -1,16 +1,23 @@
-import {Router} from 'express';
+import {Router} from 'express'
+import prisma from '../lib/prisma.js'
 
 const usersRouter = Router()
 
-usersRouter.get("/", (req, res) => {
+usersRouter.get("/", async (req, res) => {
     // Buscar en la Base de Datos
-    console.log("Alguien consulto el endpoint")
-    res.status(200).json({message: "Endpoint de obtener funcionando"})
+    try {
+        const students = await prisma.student.findMany()
+        res.status(200).json({success: true, message: "Endpoint de obtener Estudiantes", data: students})
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({success: false, message: "Error interno del servidor"})
+    }   
 })
 
-usersRouter.post("/create", (req, res) => {
+usersRouter.post("/create", async (req, res) => {
     const {studentCode, firstName, lastName, email, password, phone, birthDate} = req.body
     
+    // Validar que los datos requeridos estén presentes
     if (!studentCode || !firstName || !lastName || !email || !password){
         return res.status(400).json({
             success: false,
@@ -18,20 +25,56 @@ usersRouter.post("/create", (req, res) => {
         })
     }
 
-    try{
+    try {
+        const newStudent = await prisma.student.create({
+            data: {
+                studentCode: studentCode,
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                password: password,
+                phone: phone,
+                birthDate: birthDate ? new Date(birthDate) : null
+            }
+        })
 
-    }catch(error){
-        res.status(500).json({message: "Error al crear el usuario"})
+        return res.status(201).json({
+            success: true,
+            message: "Estudiante creado exitosamente",
+            data: newStudent
+        })
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({
+            success: false,
+            message: "Error interno del servidor"
+        })
     }
 })
 
-usersRouter.put("/update/:id", (req, res) => {
+usersRouter.put("/update/:id", async (req, res) => {
     const { id } = req.params
-    const {name, age} = req.body
-    if (!name || !age){
-        return res.status(400).json({message: "Faltan Datos: nombre o edad"})
+    const {studentCode, firstName, lastName, email, password, phone, birthDate} = req.body
+    
+    try {
+        // Actualizar en la Base de Datos
+        const updatedStudent = await prisma.student.update({
+            where: { id: parseInt(id) },
+            data: {
+                studentCode: studentCode,
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                password: password,
+                phone: phone,
+                birthDate: birthDate ? new Date(birthDate) : null
+            }
+        })
+        res.status(200).json({message: `El usuario con ID: ${id} se ha actualizado`, data: updatedStudent})
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({message: "Error interno del servidor"})
     }
-    res.status(200).json({message: `El usuario con ID: ${id} se ha actualizado`})
 })
 
 usersRouter.delete("/delete/:id", (req, res) => {
