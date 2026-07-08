@@ -9,11 +9,20 @@ usersRouter.get("/", (req, res) => {
 })
 
 usersRouter.post("/create", (req, res) => {
-    const {name, age} = req.body
-    if (!name || !age){
-        return res.status(400).json({message: "Faltan datos: nombre o edad"})
+    const {studentCode, firstName, lastName, email, password, phone, birthDate} = req.body
+    
+    if (!studentCode || !firstName || !lastName || !email || !password){
+        return res.status(400).json({
+            success: false,
+            message: "Faltan datos: studentCode, firstName, lastName, email, password son requeridos"
+        })
     }
-    res.status(201).json({message: `El usuario ${name} de ${age} se ha creado`})
+
+    try{
+
+    }catch(error){
+        res.status(500).json({message: "Error al crear el usuario"})
+    }
 })
 
 usersRouter.put("/update/:id", (req, res) => {
