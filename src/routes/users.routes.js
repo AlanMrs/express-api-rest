@@ -1,7 +1,28 @@
 import {Router} from 'express'
 import prisma from '../lib/prisma.js'
+import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 
 const usersRouter = Router()
+
+const studentsSchema = z.object({
+    studentCode: z.string().min(5, "El código de estudiante debe tener al menos 5 caracteres").max(20, "El código de estudiante no puede exceder los 20 caracteres"),
+    firstName: z.string().min(3, "El nombre debe tener al menos 3 caracteres").max(20, "El nombre no puede exceder los 20 caracteres"),
+    lastName: z.string().min(3, "El apellido debe tener al menos 3 caracteres").max(20, "El apellido no puede exceder los 20 caracteres"),
+    email: z.email("El mail no tiene formato válido"),
+    password: z.string().min(8, "La clave es muy corta").max(24, "La clave es muy larga"),
+    phone: z.string().optional(),
+    birthDate: z.string().optional()
+})
+
+const validate = (schema) => (req, res, next) => {
+    const result = schema.safeParse(req.body)
+    if (!result.success) {
+        res.status(400).json({success: false, errors: result.error.flatten().fieldErrors})
+    }
+    req.validatedData = result.data
+    next()
+}
 
 usersRouter.get("/", async (req, res) => {
     // Buscar en la Base de Datos
@@ -14,25 +35,18 @@ usersRouter.get("/", async (req, res) => {
     }   
 })
 
-usersRouter.post("/create", async (req, res) => {
+usersRouter.post("/create", validate(studentsSchema), async (req, res) => {
     const {studentCode, firstName, lastName, email, password, phone, birthDate} = req.body
     
-    // Validar que los datos requeridos estén presentes
-    if (!studentCode || !firstName || !lastName || !email || !password){
-        return res.status(400).json({
-            success: false,
-            message: "Faltan datos: studentCode, firstName, lastName, email, password son requeridos"
-        })
-    }
-
     try {
+        const hashedPassword = await bcrypt.hash(password, 12)
         const newStudent = await prisma.student.create({
             data: {
                 studentCode: studentCode,
                 firstName: firstName,
                 lastName: lastName,
                 email: email,
-                password: password,
+                password: hashedPassword,
                 phone: phone,
                 birthDate: birthDate ? new Date(birthDate) : null
             }
