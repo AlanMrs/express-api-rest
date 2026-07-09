@@ -2,6 +2,7 @@ import {Router} from 'express'
 import prisma from '../lib/prisma.js'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
+import {authMiddleware} from '../middleware/auth.middleware.js'
 
 const usersRouter = Router()
 
@@ -9,7 +10,7 @@ const studentsSchema = z.object({
     studentCode: z.string().min(5, "El código de estudiante debe tener al menos 5 caracteres").max(20, "El código de estudiante no puede exceder los 20 caracteres"),
     firstName: z.string().min(3, "El nombre debe tener al menos 3 caracteres").max(20, "El nombre no puede exceder los 20 caracteres"),
     lastName: z.string().min(3, "El apellido debe tener al menos 3 caracteres").max(20, "El apellido no puede exceder los 20 caracteres"),
-    email: z.email("El mail no tiene formato válido"),
+    email: z.email("El mail no tiene formato válido").trim().lowercase(),
     password: z.string().min(8, "La clave es muy corta").max(24, "La clave es muy larga"),
     phone: z.string().optional(),
     birthDate: z.string().optional()
@@ -35,7 +36,7 @@ usersRouter.get("/", async (req, res) => {
     }   
 })
 
-usersRouter.post("/create", validate(studentsSchema), async (req, res) => {
+usersRouter.post("/create", authMiddleware, validate(studentsSchema), async (req, res) => {
     const {studentCode, firstName, lastName, email, password, phone, birthDate} = req.body
     
     try {
@@ -66,12 +67,13 @@ usersRouter.post("/create", validate(studentsSchema), async (req, res) => {
     }
 })
 
-usersRouter.put("/update/:id", async (req, res) => {
+usersRouter.put("/update/:id", authMiddleware, async (req, res) => {
     const { id } = req.params
     const {studentCode, firstName, lastName, email, password, phone, birthDate} = req.body
     
     try {
         // Actualizar en la Base de Datos
+        const hashedPassword = await bcrypt.hash(password, 12)
         const updatedStudent = await prisma.student.update({
             where: { id: parseInt(id) },
             data: {
@@ -91,7 +93,7 @@ usersRouter.put("/update/:id", async (req, res) => {
     }
 })
 
-usersRouter.delete("/delete/:id", async (req, res) => {
+usersRouter.delete("/delete/:id", authMiddleware, async (req, res) => {
     const { id } = req.params
     try {
         const deletedStudent = await prisma.student.delete({
